@@ -1,0 +1,123 @@
+# ============================================================
+# .gitignore para projetos de dados
+# Starlight Git Project — trilha-01-fundamentos
+# ============================================================
+# Copie este arquivo para a raiz do seu projeto como .gitignore
+
+
+# ------------------------------------------------------------
+# CREDENCIAIS — nunca entram no repositório
+# ------------------------------------------------------------
+.env
+.env.*
+.env.local
+.env.production
+.env.staging
+*.pem
+*.key
+*_rsa
+*_rsa.pub
+secrets.json
+credentials.json
+service-account*.json
+
+
+# ------------------------------------------------------------
+# DADOS — use armazenamento externo (S3, GCS, etc.)
+# ------------------------------------------------------------
+data/raw/*
+data/staging/*
+data/processed/*
+
+# Mantém a estrutura de pastas sem os dados
+!data/raw/.gitkeep
+!data/staging/.gitkeep
+!data/processed/.gitkeep
+
+# Formatos de dados pesados
+*.csv
+*.parquet
+*.json
+*.jsonl
+*.xlsx
+*.xls
+
+# Exceção: arquivos de exemplo pequenos podem entrar
+!data/examples/*.csv
+!tests/fixtures/*.csv
+
+
+# ------------------------------------------------------------
+# JUPYTER NOTEBOOKS — outputs e checkpoints
+# ------------------------------------------------------------
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Para commitar notebooks sem outputs, use nbstripout
+# https://github.com/kynan/nbstripout
+
+
+# ------------------------------------------------------------
+# PYTHON
+# ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtualenv
+.venv/
+venv/
+env/
+ENV/
+
+# Coverage e testes
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+
+
+# ------------------------------------------------------------
+# SISTEMA OPERACIONAL
+# ------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+
+# ------------------------------------------------------------
+# EDITORES E IDEs
+# ------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+
+# ------------------------------------------------------------
+# LOGS E TEMPORÁRIOS
+# ------------------------------------------------------------
+*.log
+logs/
+tmp/
+temp/
+.tmp/

@@ -1,0 +1,11 @@
+[project]
+name = "projeto-logitrack-analytics"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "azure-iot-device>=2.14.0",
+    "azure-storage-blob>=12.30.0",
+    "dotenv>=0.9.9",
+]
