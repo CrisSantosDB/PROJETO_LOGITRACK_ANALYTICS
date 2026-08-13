@@ -9,7 +9,7 @@
 
 ## Contexto e Problema
 
-Nas camadas Silver de Armazém (`silver.tb_wh`) e Veículos (`silver.tb_vehicle`), são geradas métricas de alerta e status de telemetria em tempo real (ex: status de velocidade, temperatura, umidade e combustível). 
+Nas camadas Silver de Armazém (`silver.tb_wh`) e Veículos (`silver.tb_vh`), são geradas métricas de alerta e status de telemetria em tempo real (ex: status de velocidade, temperatura, umidade e combustível). 
 
 Inicialmente, avaliou-se salvar essas categorias como cadeias de texto descritivas (ex: `"EXCESSO_VELOCIDADE"`, `"ALERTA_ALTA"`). No entanto, o volume de eventos de telemetria é elevado e a Tabela Fato na camada Gold armazenará milhões de linhas de leituras.
 
