@@ -1,0 +1,75 @@
+name: "CI Pipeline - Data & Infra"
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  # ============================================================
+  # TERRAFORM - LINT & VALIDATE
+  # ============================================================
+  terraform-ci:
+    name: "Terraform Lint & Validate"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.0"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: ./infra
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: ./infra
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./infra
+
+
+  # ============================================================
+  # SYNAPSE - DATA ARTIFACTS VALIDATION
+  # ============================================================
+  data-artifacts-ci:
+    name: "Validate Synapse Artifacts"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate Synapse Notebook JSON
+        run: |
+          shopt -s nullglob
+          files=(synapse/notebook/*.json)
+          
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "Nenhum notebook JSON encontrado para validar."
+            exit 0
+          fi
+
+          for file in "${files[@]}"; do
+            echo "Validando $file..."
+            python -m json.tool "$file" > /dev/null
+          done
+          
+          echo "Todos os arquivos JSON foram validados com sucesso!"
