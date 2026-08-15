@@ -1,0 +1,95 @@
+{
+	"name": "gold_dim_wh",
+	"properties": {
+		"folder": {
+			"name": "warehouse"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sparkdev",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "8714b10f-1850-4916-afd9-5daa0a6cfa8e"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/bigDataPools/sparkdev",
+				"name": "sparkdev",
+				"type": "Spark",
+				"endpoint": "https://syn-logitrack-dev-brs.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkdev",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import col, dense_rank\n",
+					"from pyspark.sql.window import Window \n",
+					"\n",
+					"# 1. Garantir que a database gold existe\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS gold\")\n",
+					"\n",
+					"# 2. Definição do caminho base para a Gold de Armazém no ADLS Gen2\n",
+					"path_gold = \"abfs://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/warehouse/4. GOLD\"\n",
+					"\n",
+					"# 3. Leitura da tabela Silver de Armazém\n",
+					"df_silver_wh = spark.table(\"silver.tb_wh\")\n",
+					"\n",
+					"# 4. Isolar registros únicos de armazém e gerar a Surrogate Key (sk_wh)\n",
+					"window_wh = Window.orderBy(\"warehouse_id\")\n",
+					"\n",
+					"df_dim_wh = (\n",
+					"    df_silver_wh \n",
+					"    .select(\"warehouse_id\",\"sensor_type\")\n",
+					"    .distinct()\n",
+					"    .filter(col(\"warehouse_id\").isNotNull())\n",
+					"    .withColumn(\"sk_wh\", dense_rank().over(window_wh))\n",
+					"    .select(\"sk_wh\",\"warehouse_id\", \"sensor_type\")\n",
+					")\n",
+					"\n",
+					"# 5. Gravação da dim_wh Delta na Gold\n",
+					"\n",
+					"(df_dim_wh.write\n",
+					".format(\"delta\")\n",
+					".mode(\"overwrite\")\n",
+					".option(\"path\", f\"{path_gold}/dim_wh\")\n",
+					".saveAsTable(\"gold.dim_wh\")\n",
+					")"
+				],
+				"execution_count": 1
+			}
+		]
+	}
+}

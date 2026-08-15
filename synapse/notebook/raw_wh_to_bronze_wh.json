@@ -1,0 +1,100 @@
+{
+	"name": "raw_wh_to_bronze_wh",
+	"properties": {
+		"folder": {
+			"name": "warehouse"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sparkdev",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "431e58c0-fbbb-4a14-8d6a-3842acf387f8"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/bigDataPools/sparkdev",
+				"name": "sparkdev",
+				"type": "Spark",
+				"endpoint": "https://syn-logitrack-dev-brs.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkdev",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.types import StructType, StructField, StringType, TimestampType, DoubleType\n",
+					"from pyspark.sql.functions import current_timestamp, input_file_name\n",
+					"\n",
+					"# Caminho origem e destino\n",
+					"path_raw_wh = 'abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/warehouse/1. RAW'\n",
+					"path_bronze_wh = 'abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/warehouse/2. BRONZE'\n",
+					"\n",
+					"# Criar df da origem\n",
+					"schema_wh = StructType([\n",
+					"\n",
+					"   StructField('sensor_type', StringType(), True), \n",
+					"   StructField('warehouse_id', StringType(), True), \n",
+					"   StructField('temperature', DoubleType(), True), \n",
+					"   StructField('humidity', DoubleType(), True), \n",
+					"   StructField('timestamp', TimestampType(), True)])\n",
+					"\n",
+					"df_raw_wh = (\n",
+					"     spark.read.format(\"parquet\")\n",
+					"    .schema(schema_wh)\n",
+					"    .load(path_raw_wh)\n",
+					")\n",
+					"\n",
+					"# Criar df para o destino com 2 colunas de controle\n",
+					"df_bronze_wh = (\n",
+					"    df_raw_wh\n",
+					"    .withColumn(\"data_ingestao\", current_timestamp())\n",
+					"    .withColumn(\"arquivo_origem\", input_file_name())\n",
+					")\n",
+					"\n",
+					"# Enviar os dados da raw para bronze usando partição e criando tabelas delta\n",
+					"(df_bronze_wh.write\n",
+					".format(\"delta\")\n",
+					".mode(\"append\")\n",
+					".partitionBy(\"warehouse_id\")\n",
+					".save(path_bronze_wh)\n",
+					")\n",
+					""
+				],
+				"execution_count": 1
+			}
+		]
+	}
+}

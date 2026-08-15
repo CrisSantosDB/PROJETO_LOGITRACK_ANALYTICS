@@ -1,0 +1,42 @@
+{
+	"name": "pl_bronze_to_silver_wh",
+	"properties": {
+		"activities": [
+			{
+				"name": "bronze_to_silver_wh",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "bronze_wh_to_silver_wh",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "sparkdev",
+						"type": "BigDataPoolReference"
+					},
+					"executorSize": "Small",
+					"driverSize": "Small",
+					"authentication": {
+						"type": "MSI"
+					}
+				}
+			}
+		],
+		"folder": {
+			"name": "pl_wh"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-08-15T11:53:37Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

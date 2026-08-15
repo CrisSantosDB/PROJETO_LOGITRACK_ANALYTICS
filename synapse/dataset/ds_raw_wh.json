@@ -1,0 +1,21 @@
+{
+	"name": "ds_raw_wh",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_logitrack",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "warehouse/1. RAW",
+				"fileSystem": "telemetria"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

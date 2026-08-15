@@ -1,0 +1,124 @@
+{
+	"name": "bronze_vh_to_silver_vh",
+	"properties": {
+		"folder": {
+			"name": "vehicle"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sparkdev",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "d99af595-9cf8-40aa-b288-008c9658a727"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/bigDataPools/sparkdev",
+				"name": "sparkdev",
+				"type": "Spark",
+				"endpoint": "https://syn-logitrack-dev-brs.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkdev",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import col, current_timestamp,when, year, month\n",
+					"\n",
+					"# Definição dos Caminhos no ADLS Gen2\n",
+					"path_bronze_vh = \"abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/vehicle/2. BRONZE\"\n",
+					"path_silve_vh =  \"abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/vehicle/3. SILVER \"\n",
+					"path_checkpoint = \"abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/vehicle/_checkpoints/silver_vehicle\"\n",
+					"\n",
+					"# Leitura Incremental da Bronze\n",
+					"df_bronze_vh = (\n",
+					"    spark.readStream\n",
+					"    .format(\"delta\")\n",
+					"    .load(path_bronze_vh)\n",
+					"                     )\n",
+					"\n",
+					"\n",
+					"\n",
+					"# Tratamento, Deduplicação e Regras de Negócio (Bronze -> Silver)\n",
+					"\n",
+					"df_silver_vh = (\n",
+					"        df_bronze_vh\n",
+					"        .drop(\"data_ingestao\",\"arquivo_origem\")\n",
+					"        .withColumn(\"dt_corrent_silver\", current_timestamp())\n",
+					"        .filter(col(\"vehicle_id\").isNotNull())\n",
+					"        .withWatermark(\"timestamp\",\" 2 hours\")\n",
+					"        .drop_duplicates([\"vehicle_id\", \"timestamp\"])\n",
+					"        .withColumn(\"ano\", year(col(\"timestamp\")))\n",
+					"        .withColumn(\"mes\", month(col(\"timestamp\")))\n",
+					"        .withColumnRenamed(\"speed\",\"velocidade\")\n",
+					"        .withColumnRenamed(\"fuel_level\",\"nivel_combustivel_pct\")\n",
+					"       \n",
+					"\n",
+					"        .withColumn(\n",
+					"            \"status_velocidade\",\n",
+					"            when(col(\"velocidade\") > 90.0, \"2\")\n",
+					"            .when(col(\"velocidade\") == 0.0, \"3\")\n",
+					"            .otherwise(\"1\")\n",
+					"            )\n",
+					"        .withColumn(\n",
+					"            \"status_combustivel\",\n",
+					"            when(col(\"nivel_combustivel_pct\")< 15.0, \"2\")\n",
+					"            .otherwise(\"1\")\n",
+					"        )\n",
+					")\n",
+					"\n",
+					"# Tabela transformada enviada para silver\n",
+					"spark.sql(\"create database if not exists silver\" )\n",
+					"\n",
+					"query_vh = (\n",
+					"     df_silver_vh.writeStream\n",
+					"    .format(\"delta\")\n",
+					"    .outputMode(\"append\")\n",
+					"    .option(\"checkpointLocation\", path_checkpoint)\n",
+					"    .option(\"path\", path_silve_vh)\n",
+					"    .option(\"mergeSchema\",\"true\")\n",
+					"    .partitionBy(\"ano\",\"mes\")\n",
+					"    .trigger(availableNow=True)\n",
+					"    .toTable(\"silver.tb_vh\")\n",
+					"\n",
+					")\n",
+					"query_vh.awaitTermination()\n",
+					""
+				],
+				"execution_count": 1
+			}
+		]
+	}
+}

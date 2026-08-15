@@ -1,0 +1,78 @@
+{
+	"name": "pl_silver_to_gold_wh",
+	"properties": {
+		"activities": [
+			{
+				"name": "silver_to_gold_dim_wh",
+				"type": "SynapseNotebook",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "gold_dim_wh",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "sparkdev",
+						"type": "BigDataPoolReference"
+					},
+					"executorSize": "Small",
+					"driverSize": "Small",
+					"authentication": {
+						"type": "MSI"
+					}
+				}
+			},
+			{
+				"name": "silver_to_gold_fct_wh",
+				"type": "SynapseNotebook",
+				"dependsOn": [
+					{
+						"activity": "silver_to_gold_dim_wh",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebook": {
+						"referenceName": "gold_fct_wh",
+						"type": "NotebookReference"
+					},
+					"snapshot": true,
+					"sparkPool": {
+						"referenceName": "sparkdev",
+						"type": "BigDataPoolReference"
+					},
+					"executorSize": "Small",
+					"driverSize": "Small",
+					"authentication": {
+						"type": "MSI"
+					}
+				}
+			}
+		],
+		"folder": {
+			"name": "pl_wh"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-08-15T12:51:06Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

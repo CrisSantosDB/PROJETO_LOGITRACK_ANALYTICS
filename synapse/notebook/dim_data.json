@@ -1,0 +1,94 @@
+{
+	"name": "dim_data",
+	"properties": {
+		"folder": {
+			"name": "dim_data"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sparkdev",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "94829c9c-c7d1-4288-a22f-a155234e2fcf"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/bigDataPools/sparkdev",
+				"name": "sparkdev",
+				"type": "Spark",
+				"endpoint": "https://syn-logitrack-dev-brs.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkdev",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import col, expr , sequence, to_date, lit, year, month, dayofmonth, date_format, quarter, explode\n",
+					"\n",
+					"path_dim_data = \"abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/dim_data/\"\n",
+					"\n",
+					"# Criar a coluna data_comp\n",
+					"df_datas_base = spark.range(1).select(\n",
+					"    explode(sequence(to_date(lit(\"2026-01-01\")),to_date(lit(\"2046-12-31\")), expr(\"interval 1 day\"))).alias(\"data_comp\")\n",
+					")\n",
+					"\n",
+					"\n",
+					"df_dim_data = (\n",
+					"    df_datas_base\n",
+					"    .withColumn(\"sk_data\", date_format(col(\"data_comp\"), \"yyyyMMdd\").cast(\"int\"))\n",
+					"    .withColumn(\"ano\",year(col(\"data_comp\")))\n",
+					"    .withColumn(\"mes\",month(col(\"data_comp\")))\n",
+					"    .withColumn(\"dia\",dayofmonth(col(\"data_comp\")))\n",
+					"    .withColumn(\"nome_mes\",date_format(col(\"data_comp\"),\"MMMM\"))\n",
+					"    .withColumn(\"nome_dia\",date_format(col(\"data_comp\"),\"EEEE\"))\n",
+					"    .withColumn(\"trimestre\",quarter(col(\"data_comp\")))\n",
+					"    .select(\"sk_data\",\"data_comp\",\"ano\",\"mes\",\"dia\",\"nome_mes\",\"nome_dia\",\"trimestre\")\n",
+					")\n",
+					"\n",
+					"spark.sql(\"create database if not exists gold\")\n",
+					"\n",
+					"(df_dim_data.write\n",
+					".format(\"delta\")\n",
+					".mode(\"overwrite\")\n",
+					".option(\"path\",f\"{path_dim_data}/dim_data\")\n",
+					".saveAsTable(\"gold.dim_data\")\n",
+					")\n",
+					""
+				],
+				"execution_count": 1
+			}
+		]
+	}
+}

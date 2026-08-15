@@ -1,0 +1,50 @@
+{
+	"name": "ds_raw_vh",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_logitrack",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": "vehicle/1. RAW",
+				"fileSystem": "telemetria"
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": [
+			{
+				"name": "sensor_type",
+				"type": "UTF8"
+			},
+			{
+				"name": "vehicle_id",
+				"type": "UTF8"
+			},
+			{
+				"name": "speed",
+				"type": "DOUBLE"
+			},
+			{
+				"name": "fuel_level",
+				"type": "DOUBLE"
+			},
+			{
+				"name": "latitude",
+				"type": "DOUBLE"
+			},
+			{
+				"name": "longitude",
+				"type": "DOUBLE"
+			},
+			{
+				"name": "timestamp",
+				"type": "TIMESTAMP_MILLIS"
+			}
+		]
+	},
+	"type": "Microsoft.Synapse/workspaces/datasets"
+}

@@ -1,0 +1,116 @@
+{
+	"name": "gold_fct_wh",
+	"properties": {
+		"folder": {
+			"name": "warehouse"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sparkdev",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "f26042d7-c78f-4835-b2c3-19700d210c1f"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/bigDataPools/sparkdev",
+				"name": "sparkdev",
+				"type": "Spark",
+				"endpoint": "https://syn-logitrack-dev-brs.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkdev",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from delta.tables import DeltaTable\n",
+					"from pyspark.sql.functions import col, date_format \n",
+					"\n",
+					"# 1. Garantir que a database gold existe e definir o caminho de gravação\n",
+					"spark.sql(\"create database if not exists gold\")\n",
+					"path_gold = \"abfs://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/warehouse/4. GOLD\"\n",
+					"\n",
+					"# 2. Leitura da Silver de Armazém e Lookup da Dimensão Armazém\n",
+					"df_silver_wh = spark.table(\"silver.tb_wh\")\n",
+					"dim_wh_lookup = spark.table(\"gold.dim_wh\").select(\"sk_wh\", \"warehouse_id\")\n",
+					"\n",
+					"# 3. Construção da Tabela Fato\n",
+					"df_fct_wh_novos = (\n",
+					"    df_silver_wh\n",
+					"    # Join com a dimensão armazém para trazer a Surrogate Key (sk_wh)\n",
+					"    .join(dim_wh_lookup, on=\"warehouse_id\", how=\"inner\")\n",
+					"    .withColumn(\"sk_data\", date_format(col(\"timestamp\"),\"yyyyMMdd\").cast(\"int\"))\n",
+					"    # Seleção final mantendo apenas as chaves (FKs), métricas e flags \n",
+					"    .select(\n",
+					"       \"sk_wh\",\n",
+					"       \"sk_data\",\n",
+					"       \"temperatura_celsius\",\n",
+					"       \"umidade\",\n",
+					"       \"timestamp\",\n",
+					"      \"status_temperatura\",\n",
+					"      \"status_umidade\",\n",
+					"      \"status_geral_armazem\"\n",
+					"    )\n",
+					")\n",
+					"\n",
+					"caminho_fct = f\"{path_gold}/fct_wh\"\n",
+					"if not DeltaTable.isDeltaTable(spark, caminho_fct):\n",
+					"   \n",
+					"    (df_fct_wh_novos.write\n",
+					"            .format(\"delta\")\n",
+					"            .option(\"path\", f\"{path_gold}/fct_wh\")\n",
+					"            .saveAsTable(\"gold.fct_wh\")\n",
+					"\n",
+					")\n",
+					"else:\n",
+					"   \n",
+					"    delta_fct_wh = DeltaTable.forPath(spark, caminho_fct)\n",
+					"    (\n",
+					"        delta_fct_wh.alias(\"fato\")\n",
+					"        .merge(\n",
+					"            df_fct_wh_novos.alias(\"novos\"),\n",
+					"            \"fato.sk_wh = novos.sk_wh AND fato.timestamp = novos.timestamp\"\n",
+					"        )\n",
+					"        .whenNotMatchedInsertAll()\n",
+					"        .execute()\n",
+					"    \n",
+					"    )\n",
+					""
+				],
+				"execution_count": 9
+			}
+		]
+	}
+}

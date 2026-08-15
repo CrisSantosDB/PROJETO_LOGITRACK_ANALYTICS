@@ -1,0 +1,129 @@
+{
+	"name": "bronze_wh_to_silver_wh",
+	"properties": {
+		"folder": {
+			"name": "warehouse"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sparkdev",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "d383ddfe-a7e1-4a35-a555-7e6356c9e098"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/bigDataPools/sparkdev",
+				"name": "sparkdev",
+				"type": "Spark",
+				"endpoint": "https://syn-logitrack-dev-brs.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkdev",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.functions import col, when, trim, current_timestamp, year, month\n",
+					"path_bronze_wh = 'abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/warehouse/2. BRONZE'\n",
+					"path_silver_wh = 'abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/warehouse/3. SILVER'\n",
+					"path_checkpoint = \"abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/warehouse/_checkpoints/silver_warehouse\"\n",
+					"\n",
+					"# Ler a tabela na camada bronze\n",
+					"df_bronze_wh = (\n",
+					"    spark.readStream\n",
+					"                .format(\"delta\")\n",
+					"                .load(path_bronze_wh)\n",
+					"                )\n",
+					"\n",
+					"# Tratamento, Deduplicação e Regras de Negócio (Bronze -> Silver)\n",
+					"df_silver_wh =(\n",
+					"\n",
+					"    df_bronze_wh\n",
+					"    .drop(\"arquivo_origem\")\n",
+					"    .drop(\"data_ingestao\")\n",
+					"    .withColumn(\"dt_processamento_silver\", current_timestamp())\n",
+					"    .filter(col(\"warehouse_id\").isNotNull())\n",
+					"    .withWatermark(\"timestamp\",\"2 hours\")\n",
+					"    .dropDuplicates([\"warehouse_id\",\"timestamp\"])\n",
+					"    .withColumn(\"ano\", year(col(\"timestamp\")))\n",
+					"    .withColumn(\"mes\", month(col(\"timestamp\")))\n",
+					"    .withColumnRenamed(\"temperature\",\"temperatura_celsius\")\n",
+					"    .withColumnRenamed(\"humidity\",\"umidade\")\n",
+					"    # Flag de Alerta de Temperatura\n",
+					"    .withColumn(\n",
+					"        \"status_temperatura\",\n",
+					"        when(col(\"temperatura_celsius\")> 28.0, \"2\")\n",
+					"        .when(col(\"temperatura_celsius\")< 15.0, \"3\")\n",
+					"        .otherwise(\"1\")\n",
+					"    )\n",
+					"    # Flag de Alerta de Umidade\n",
+					"   .withColumn(\n",
+					"     \"status_umidade\",\n",
+					"      when(col(\"umidade\") > 63.0, \"2\")\n",
+					"      .when(col(\"umidade\") < 30.0, \"3\")\n",
+					"      .otherwise(\"1\")\n",
+					"    )\n",
+					"     # Status Geral do Armazém (Consolidado)\n",
+					"    .withColumn(\n",
+					"        \"status_geral_armazem\",\n",
+					"        when((col(\"temperatura_celsius\") > 28.0) & (col(\"umidade\") > 63.0 ), \"2\")\n",
+					"        .when((col(\"temperatura_celsius\") < 15.0) & (col(\"umidade\") < 30.0 ), \"2\")\n",
+					"        .otherwise(\"1\")\n",
+					"        )\n",
+					"\n",
+					"    \n",
+					"\n",
+					")\n",
+					"# Tabela transformada enviada para silver\n",
+					"spark.sql(\"CREATE DATABASE IF NOT EXISTS silver\")\n",
+					"query = (\n",
+					"    df_silver_wh.writeStream\n",
+					"    .format(\"delta\")\n",
+					"    .outputMode(\"append\")\n",
+					"    .option(\"checkpointLocation\", path_checkpoint)\n",
+					"    .option(\"path\", path_silver_wh)\n",
+					"    .option(\"mergeSchema\", \"true\")\n",
+					"    .partitionBy(\"ano\",\"mes\")\n",
+					"    .trigger(availableNow=True)\n",
+					"    .toTable(\"silver.tb_wh\")\n",
+					")\n",
+					"query.awaitTermination()\n",
+					""
+				],
+				"execution_count": 2
+			}
+		]
+	}
+}

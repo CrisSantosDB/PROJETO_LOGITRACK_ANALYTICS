@@ -1,0 +1,203 @@
+{
+	"name": "pl_raw_to_bronze_wh",
+	"properties": {
+		"activities": [
+			{
+				"name": "verifica_raw_wh",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "ds_raw_wh",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"childItems"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "ParquetReadSettings"
+					}
+				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "verifica_raw_wh",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(length(activity('verifica_raw_wh').output.childItems), 0)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Log_Pasta_RAW_Vazia_Sem_Arquivos",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						},
+						{
+							"name": "Set variable2",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Log_Pasta_RAW_Vazia_Sem_Arquivos",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "pipelineReturnValue",
+								"value": [
+									{
+										"key": "tem_dados",
+										"value": {
+											"type": "Boolean",
+											"content": false
+										}
+									}
+								],
+								"setSystemVariable": true
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "raw_to_bronze_wh",
+							"type": "SynapseNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebook": {
+									"referenceName": "raw_wh_to_bronze_wh",
+									"type": "NotebookReference"
+								},
+								"snapshot": true,
+								"sparkPool": {
+									"referenceName": "sparkdev",
+									"type": "BigDataPoolReference"
+								},
+								"executorSize": "Small",
+								"conf": {
+									"spark.dynamicAllocation.enabled": true
+								},
+								"driverSize": "Small",
+								"authentication": {
+									"type": "MSI"
+								}
+							}
+						},
+						{
+							"name": "delete_raw_wh",
+							"type": "Delete",
+							"dependsOn": [
+								{
+									"activity": "raw_to_bronze_wh",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "ds_raw_wh",
+									"type": "DatasetReference"
+								},
+								"enableLogging": false,
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFileName": {
+										"value": "*.parquet",
+										"type": "Expression"
+									},
+									"enablePartitionDiscovery": false
+								}
+							}
+						},
+						{
+							"name": "Set variable1",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "delete_raw_wh",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "pipelineReturnValue",
+								"value": [
+									{
+										"key": "tem_dados",
+										"value": {
+											"type": "Boolean",
+											"content": true
+										}
+									}
+								],
+								"setSystemVariable": true
+							}
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "pl_wh"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-08-15T11:53:54Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

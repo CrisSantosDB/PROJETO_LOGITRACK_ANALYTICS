@@ -1,0 +1,114 @@
+{
+	"name": "raw_vh_to_bronze_vh",
+	"properties": {
+		"folder": {
+			"name": "vehicle"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sparkdev",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "fe3e216d-bff1-449f-9fb9-3449ab1db1c0"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/bigDataPools/sparkdev",
+				"name": "sparkdev",
+				"type": "Spark",
+				"endpoint": "https://syn-logitrack-dev-brs.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkdev",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from pyspark.sql.types import StructType, StructField, StringType, DoubleType, TimestampType\n",
+					"from pyspark.sql.functions import current_timestamp, input_file_name\n",
+					"\n",
+					"# Caminho origem e destino\n",
+					"path_raw_vh = 'abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/vehicle/1. RAW'\n",
+					"path_bronze_vh = 'abfss://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/vehicle/2. BRONZE'\n",
+					"\n",
+					"# Criar df da origem\n",
+					"schema_raw_vh = (\n",
+					"    StructType([\n",
+					"    StructField('sensor_type', StringType(), True),\n",
+					"    StructField('vehicle_id', StringType(), True), \n",
+					"    StructField('speed', DoubleType(), True), \n",
+					"    StructField('fuel_level', DoubleType(), True), \n",
+					"    StructField('latitude', DoubleType(), True), \n",
+					"    StructField('longitude', DoubleType(), True), \n",
+					"    StructField('timestamp', TimestampType(), True)\n",
+					"    ])\n",
+					")\n",
+					"\n",
+					"df_raw_vh = (\n",
+					"    spark.read\n",
+					"    .format(\"parquet\")\n",
+					"    .schema(schema_raw_vh)\n",
+					"    .load(path_raw_vh)\n",
+					")\n",
+					"\n",
+					"# Criar df para o destino com 2 colunas de controle\n",
+					"df_bronze_vh =(\n",
+					"    df_raw_vh\n",
+					"    .withColumn(\"data_ingestao\",current_timestamp())\n",
+					"    .withColumn(\"arquivo_origem\", input_file_name())\n",
+					"\n",
+					")\n",
+					"# Enviar os dados da raw para bronze usando partição e criando tabelas delta\n",
+					"(df_bronze_vh.write\n",
+					".format(\"delta\")\n",
+					".mode(\"append\")\n",
+					".partitionBy(\"vehicle_id\")\n",
+					".save(path_bronze_vh)\n",
+					")"
+				],
+				"execution_count": 5
+			},
+			{
+				"cell_type": "code",
+				"metadata": {
+					"collapsed": false
+				},
+				"source": [
+					""
+				],
+				"execution_count": 20
+			}
+		]
+	}
+}

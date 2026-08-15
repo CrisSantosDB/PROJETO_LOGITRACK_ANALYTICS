@@ -1,0 +1,100 @@
+{
+	"name": "pl_master_vh",
+	"properties": {
+		"activities": [
+			{
+				"name": "Execute_raw_to_bronze_vh",
+				"type": "ExecutePipeline",
+				"dependsOn": [],
+				"policy": {
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_raw_to_bronze_vh",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			},
+			{
+				"name": "Verifica_Se_Teve_Dados",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Execute_raw_to_bronze_vh",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('Execute_raw_to_bronze_vh').output.pipelineReturnValue.tem_dados,true)\n\n",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Log_Sem_Novos_Dados",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Execute_bronze_to_silver_vh",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_bronze_to_silver_vh",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						},
+						{
+							"name": "Execute_silver_to_gold",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "Execute_bronze_to_silver_vh",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_silver_to_gold_vh",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true
+							}
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "pl_master_vh"
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-08-15T13:42:34Z"
+	},
+	"type": "Microsoft.Synapse/workspaces/pipelines"
+}

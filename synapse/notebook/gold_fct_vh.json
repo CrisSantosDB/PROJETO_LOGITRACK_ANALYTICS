@@ -1,0 +1,115 @@
+{
+	"name": "gold_fct_vh",
+	"properties": {
+		"folder": {
+			"name": "vehicle"
+		},
+		"nbformat": 4,
+		"nbformat_minor": 2,
+		"bigDataPool": {
+			"referenceName": "sparkdev",
+			"type": "BigDataPoolReference"
+		},
+		"sessionProperties": {
+			"driverMemory": "28g",
+			"driverCores": 4,
+			"executorMemory": "28g",
+			"executorCores": 4,
+			"numExecutors": 2,
+			"runAsWorkspaceSystemIdentity": false,
+			"conf": {
+				"spark.dynamicAllocation.enabled": "false",
+				"spark.dynamicAllocation.minExecutors": "2",
+				"spark.dynamicAllocation.maxExecutors": "2",
+				"spark.autotune.trackingId": "f39651f9-59da-4512-b0f8-443da2e463d6"
+			}
+		},
+		"metadata": {
+			"saveOutput": true,
+			"synapse_widget": {
+				"version": "0.1"
+			},
+			"enableDebugMode": false,
+			"language_info": {
+				"name": "python"
+			},
+			"a365ComputeOptions": {
+				"id": "/subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/bigDataPools/sparkdev",
+				"name": "sparkdev",
+				"type": "Spark",
+				"endpoint": "https://syn-logitrack-dev-brs.dev.azuresynapse.net/livyApi/versions/2019-11-01-preview/sparkPools/sparkdev",
+				"auth": {
+					"type": "AAD",
+					"authResource": "https://dev.azuresynapse.net",
+					"authHeader": null
+				},
+				"sparkVersion": "3.5",
+				"nodeCount": 10,
+				"cores": 4,
+				"memory": 28,
+				"extraHeader": null
+			},
+			"sessionKeepAliveTimeout": 30
+		},
+		"cells": [
+			{
+				"cell_type": "code",
+				"source": [
+					"from delta.tables import DeltaTable\n",
+					"from pyspark.sql.functions import col, date_format\n",
+					"\n",
+					"# 1. Garantir que a database gold existe e definir o caminho de gravação\n",
+					"spark.sql(\"create database if not exists gold\")\n",
+					"path_gold = \"abfs://telemetria@stlogitrackdevbrazsouth.dfs.core.windows.net/vehicle/4. GOLD\"\n",
+					"\n",
+					"# 2. Leitura da Silver de vehicle e Lookup da Dimensão vehicle\n",
+					"df_silver_vh  = spark.table(\"silver.tb_vh\")\n",
+					"dim_vh_lookup = spark.table(\"gold.dim_vh\").select(\"sk_vh\",\"vehicle_id\")\n",
+					"\n",
+					"# 3. Construção da Tabela Fato\n",
+					"df_fct_vh_novo = (\n",
+					"    df_silver_vh\n",
+					"     # Join com a dimensão vehicle para trazer a Surrogate Key (sk_wh)\n",
+					"    .join( dim_vh_lookup, on=\"vehicle_id\", how=\"inner\")\n",
+					"    .withColumn(\"sk_data\", date_format(col(\"timestamp\"), \"yyyyMMdd\").cast(\"int\"))\n",
+					"    # Seleção final mantendo apenas as chaves (FKs), métricas e flags \n",
+					"    .select(\n",
+					"        \"sk_vh\",\n",
+					"        \"sk_data\",\n",
+					"        \"velocidade\",\n",
+					"        \"nivel_combustivel_pct\",\n",
+					"        \"latitude\",\n",
+					"        \"longitude\",\n",
+					"        \"timestamp\",\n",
+					"        \"status_velocidade\",\n",
+					"        \"status_combustivel\"\n",
+					"\n",
+					"    )\n",
+					")\n",
+					"\n",
+					"if not spark.catalog.tableExists(\"gold.fct_vh\"):\n",
+					"    \n",
+					"    (df_fct_vh_novo.write\n",
+					"    .format(\"delta\")\n",
+					"    .option(\"path\",f\"{path_gold}/fct_vh\")\n",
+					"    .saveAsTable(\"gold.fct_vh\")\n",
+					"    )\n",
+					"else:\n",
+					"    \n",
+					"    delta_fct_vh = DeltaTable.forName(spark ,\"gold.fct_vh\")\n",
+					"\n",
+					"    (\n",
+					"    delta_fct_vh.alias(\"fato\")\n",
+					"    .merge(\n",
+					"        df_fct_vh_novo.alias(\"novos\"),\n",
+					"       \" fato.sk_vh = novos.sk_vh AND fato.timestamp = novos.timestamp\"\n",
+					"       )\n",
+					"    .whenNotMatchedInsertAll()\n",
+					"    .execute()\n",
+					")"
+				],
+				"execution_count": 18
+			}
+		]
+	}
+}
