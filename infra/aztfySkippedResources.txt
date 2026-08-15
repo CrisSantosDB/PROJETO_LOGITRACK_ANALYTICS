@@ -1,0 +1,9 @@
+Following resources are marked to be skipped:
+
+- /subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Storage/storageAccounts/stlogitrackdevbrazsouth/blobServices/default
+- /subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Storage/storageAccounts/stlogitrackdevbrazsouth/fileServices/default
+- /subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Storage/storageAccounts/stlogitrackdevbrazsouth/queueServices/default
+- /subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Storage/storageAccounts/stlogitrackdevbrazsouth/tableServices/default
+- /subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/auditingSettings/Default
+- /subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/azureADOnlyAuthentications/default
+- /subscriptions/47aefbfa-9a52-4276-a127-e56c0172c292/resourceGroups/rg-logitrack-dev-brazilsouth/providers/Microsoft.Synapse/workspaces/syn-logitrack-dev-brs/dedicatedSQLminimalTlsSettings/default
