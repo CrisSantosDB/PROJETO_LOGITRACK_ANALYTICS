@@ -38,13 +38,18 @@ resource "azurerm_iothub" "res-1" {
     Owner       = "data-engineering"
     Project     = "logitrack-analytics"
   }
-  file_upload {
-    connection_string = ""
-    container_name    = ""
-  }
+
   sku {
     capacity = 1
     name     = "B1"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      event_hub_partition_count,
+      event_hub_retention_in_days,
+      file_upload
+    ]
   }
   depends_on = [
     azurerm_resource_group.res-0,
