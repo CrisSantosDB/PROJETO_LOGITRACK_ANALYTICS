@@ -81,8 +81,8 @@ resource "azurerm_storage_account" "res-3" {
   ]
 }
 resource "azurerm_storage_container" "res-5" {
-  name                 = "telemetria"
-  storage_account_id   = azurerm_storage_account.res-3.id
+  name               = "telemetria"
+  storage_account_id = azurerm_storage_account.res-3.id
 }
 resource "azurerm_synapse_workspace" "res-9" {
   location                             = "brazilsouth"
