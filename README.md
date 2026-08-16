@@ -162,7 +162,7 @@ Feature Branch ────► Pull Request ────► CI Pipeline (Lint, F
 
 ### 1. Clonar o repositório
 ```bash
-git clone (https://github.com/CrisSantosDB/PROJETO_LOGITRACK_ANALYTICS.git)
+git clone https://github.com/CrisSantosDB/PROJETO_LOGITRACK_ANALYTICS.git
 cd PROJETO_LOGITRACK_ANALYTICS
 ```
 
