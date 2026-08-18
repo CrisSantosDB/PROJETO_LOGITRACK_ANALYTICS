@@ -151,36 +151,6 @@ Feature Branch ────► Pull Request ────► CI Pipeline (Lint, F
 └── uv.lock
 ```
 
----
-
-## 🚀 Como Executar Localmente
-
-### Pré-requisitos
-* [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) instalado e autenticado (`az login`)
-* [Terraform](https://www.terraform.io/downloads.html) 
-* Git
-
-### 1. Clonar o repositório
-```bash
-git clone https://github.com/CrisSantosDB/PROJETO_LOGITRACK_ANALYTICS.git
-cd PROJETO_LOGITRACK_ANALYTICS
-```
-
-### 2. Inicializar a Infraestrutura (Terraform)
-```bash
-cd infra
-
-# Inicializar o backend remoto e provedores
-terraform init
-
-# Visualizar o plano de execução
-terraform plan
-
-# Aplicar mudanças (caso execute manualmente)
-terraform apply
-```
-
----
 
 ## 🛠️ Tecnologias Utilizadas
 
